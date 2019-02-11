@@ -354,9 +354,6 @@ DO j = 1, nf
   tbeta = tbeta + iBeta(j)
 END DO
 
-! ReCalculate forward flux
-! CALL outer4(0)
-
 ! Calculate reactivity
 CALL react(af, sigr, rho)
 
