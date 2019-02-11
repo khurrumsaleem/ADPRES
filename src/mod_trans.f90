@@ -27,7 +27,7 @@ USE sdata, ONLY: ng, nnod, sigr, nf, &
                  f0, fx1, fy1, fz1, fx2, fy2, fz2, &
                  fs0, fsx1, fsy1, fsz1, fsx2, fsy2, fsz2, &
                  c0, cx1, cy1, cz1, cx2, cy2, cz2, tbeta, omeg, tranw, &
-                 ft, ftx1, fty1, ftz1, ftx2, fty2, ftz2
+                 ft, ftx1, fty1, ftz1, ftx2, fty2, ftz2, thet, bthet
 USE InpOutp, ONLY: XS_updt, ounit
 USE nodal, ONLY: nodal_coup4, outer4, outertf, outer4ad, PowTot, Fsrc
 
@@ -92,6 +92,12 @@ END DO
 ! Calculate reactivity
 CALL react(af, sigr, rho)
 
+! Save sigr to sigrp
+sigrp = sigr
+
+!Define bthet
+bthet = (1. - thet) / thet
+
 ! File output
 WRITE(ounit, *)
 WRITE(ounit, *) " TRANSIENT RESULTS :"
@@ -128,15 +134,17 @@ DO i = 1, imax
        omeg = 0.
     END IF
 
+    CALL SavePre(tstep1, sigrp, ft, ftx1, fty1, ftz1, ftx2, fty2, ftz2)
+
     ! Rod bank changes
     DO n = 1, nb
         IF (mdir(n) == 1) THEN   ! If CR moving down
-            IF (t2-tmove(n) > 1.d-5 .AND. fbpos(n)-bpos(n) < 1.d-5) THEN
+            IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) < 1.e-5) THEN
                 bpos(n) = bpos(n) - tstep1 *  bspeed(n)
                 IF (bpos(n) < fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
             END IF
         ELSE IF (mdir(n) == 2) THEN ! If CR moving up
-            IF (t2-tmove(n) > 1.d-5 .AND. fbpos(n)-bpos(n) > 1.d-5) THEN
+            IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) > 1.e-5) THEN
                 bpos(n) = bpos(n) + tstep1 *  bspeed(n)
                 IF (bpos(n) > fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
             END IF
@@ -152,14 +160,10 @@ DO i = 1, imax
     sigrp = sigr    ! Save sigr to sigrp
     DO g = 1, ng
        DO n = 1, nnod
-          sigr(n,g) = sigr(n,g) + 1. / (velo(g) * tstep1) + omeg(n,g) / velo(g)
+          sigr(n,g) = sigr(n,g) + 1. / (velo(g) * tstep1 * thet) &
+                    + omeg(n,g) / velo(g)
        END DO
     END DO
-
-    ! Save the previous flux and DN precusor density
-    ft = f0
-    ftx1 = fx1; fty1 = fy1; ftz1 = fz1
-    ftx2 = fx2; fty2 = fy2; ftz2 = fz2
 
     ! Transient calculation
     CALL nodal_coup4()
@@ -209,12 +213,12 @@ DO i = 1, imax
     ! Rod bank changes
     DO n = 1, nb
         IF (mdir(n) == 1) THEN   ! If CR moving down
-            IF (t2-tmove(n) > 1.d-5 .AND. fbpos(n)-bpos(n) < 1.d-5) THEN
+            IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) < 1.e-5) THEN
                 bpos(n) = bpos(n) - tstep2 *  bspeed(n)
                 IF (bpos(n) < fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
             END IF
         ELSE IF (mdir(n) == 2) THEN ! If CR moving up
-            IF (t2-tmove(n) > 1.d-5 .AND. fbpos(n)-bpos(n) > 1.d-5) THEN
+            IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) > 1.e-5) THEN
                 bpos(n) = bpos(n) + tstep2 *  bspeed(n)
                 IF (bpos(n) > fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
             END IF
@@ -401,12 +405,12 @@ DO i = 1, imax
   ! Rod bank changes
   DO n = 1, nb
       IF (mdir(n) == 1) THEN   ! If CR moving down
-          IF (t2-tmove(n) > 1.d-5 .AND. fbpos(n)-bpos(n) < 1.d-5) THEN
+          IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) < 1.e-5) THEN
               bpos(n) = bpos(n) - tstep1 *  bspeed(n)
               IF (bpos(n) < fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
           END IF
       ELSE IF (mdir(n) == 2) THEN ! If CR moving up
-          IF (t2-tmove(n) > 1.d-5 .AND. fbpos(n)-bpos(n) > 1.d-5) THEN
+          IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) > 1.e-5) THEN
               bpos(n) = bpos(n) + tstep1 *  bspeed(n)
               IF (bpos(n) > fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
           END IF
@@ -504,12 +508,12 @@ DO i = 1, imax
   ! Rod bank changes
   DO n = 1, nb
       IF (mdir(n) == 1) THEN   ! If CR moving down
-          IF (t2-tmove(n) > 1.d-5 .AND. fbpos(n)-bpos(n) < 1.d-5) THEN
+          IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) < 1.e-5) THEN
               bpos(n) = bpos(n) - tstep2 *  bspeed(n)
               IF (bpos(n) < fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
           END IF
       ELSE IF (mdir(n) == 2) THEN ! If CR moving up
-          IF (t2-tmove(n) > 1.d-5 .AND. fbpos(n)-bpos(n) > 1.d-5) THEN
+          IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) > 1.e-5) THEN
               bpos(n) = bpos(n) + tstep2 *  bspeed(n)
               IF (bpos(n) > fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
           END IF
@@ -801,12 +805,12 @@ DO i = 1, imax
     ! Rod bank changes
     DO n = 1, nb
         IF (mdir(n) == 1) THEN   ! If CR moving down
-            IF (t2-tmove(n) > 1.d-5 .AND. fbpos(n)-bpos(n) < 1.d-5) THEN
+            IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) < 1.e-5) THEN
                 bpos(n) = bpos(n) - tstep1 *  bspeed(n)
                 IF (bpos(n) < fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
             END IF
         ELSE IF (mdir(n) == 2) THEN ! If CR moving up
-            IF (t2-tmove(n) > 1.d-5 .AND. fbpos(n)-bpos(n) > 1.d-5) THEN
+            IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) > 1.e-5) THEN
                 bpos(n) = bpos(n) + tstep1 *  bspeed(n)
                 IF (bpos(n) > fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
             END IF
@@ -829,6 +833,167 @@ DO i = 1, imax
 END DO
 
 END SUBROUTINE kreact
+
+
+SUBROUTINE SavePre(tdel, sigrx, ft, ftx1, fty1, ftz1, ftx2, fty2, ftz2)
+
+!
+! Purpose:
+!    To save previous time variables
+!
+
+USE sdata, ONLY: nnod, ng, nf, nod, lamb, sigs, chi, tbeta, velo, &
+                 omeg, mat, ix, iy, iz, xdel, ydel, zdel, thet, bthet, D, &
+                 f0, fx1, fy1, fz1, fx2, fy2, fz2, &
+                 fs0, fsx1, fsy1, fsz1, fsx2, fsy2, fsz2, &
+                 c0, cx1, cy1, cz1, cx2, cy2, cz2
+USE nodal, ONLY: TLUpd
+
+
+IMPLICIT NONE
+
+REAL, INTENT(IN) :: tdel
+REAL, DIMENSION(:,:), INTENT(IN) :: sigrx
+REAL, DIMENSION(:,:), INTENT(OUT) :: ft, ftx1, fty1, ftz1, ftx2, fty2, ftz2
+
+REAL, DIMENSION(7) :: Lm
+INTEGER :: g, n, i, h
+REAL :: scat, dela
+REAL :: t, a
+
+DO g = 1, ng
+  DO n = 1, nnod
+
+    CALL TLUpd (n, g, Lm)
+
+    ! Zeroth moment
+    scat = 0.
+    DO h = 1, ng
+       IF (g /= h) scat = scat + sigs(n,h,g) * f0(n,h)
+    END DO
+    dela = 0.
+    DO i = 1, nf
+       dela = dela + lamb(i) * c0(n,i)
+    END DO
+    ft(n,g) = -nod(n,g)%L(1) / xdel(ix(n)) - nod(n,g)%L(2) / ydel(iy(n)) &
+            - nod(n,g)%L(3) / zdel(iz(n)) - sigrx(n,g) * f0(n,g) &
+            + scat + chi(mat(n),g) * ((1.-tbeta) * fs0(n) + dela) &
+            + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
+            * f0(n,g)
+
+    ! x1 moment
+    scat = 0.
+    DO h = 1, ng
+       IF (g /= h) scat = scat + sigs(n,h,g) * fx1(n,h)
+    END DO
+    dela = 0.
+    DO i = 1, nf
+       dela = dela + lamb(i) * cx1(n,i)
+    END DO
+    t = nod(n,g)%jo(1) - nod(n,g)%ji(1) + nod(n,g)%ji(2) - nod(n,g)%jo(2)
+    a = 2. * (nod(n,g)%jo(1) + nod(n,g)%ji(1) &
+      - nod(n,g)%ji(2) - nod(n,g)%jo(2))
+    ftx1(n,g) = -0.5 / xdel(ix(n)) * t - D(n,g) / xdel(ix(n))**2 * a &
+              - sigrx(n,g) * fx1(n,g) &
+              + scat + chi(mat(n),g) * ((1.-tbeta) * fsx1(n) + dela) &
+              + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
+              * fx1(n,g) - Lm(1)
+
+    ! y1 moment
+    scat = 0.
+    DO h = 1, ng
+       IF (g /= h) scat = scat + sigs(n,h,g) * fy1(n,h)
+    END DO
+    dela = 0.
+    DO i = 1, nf
+       dela = dela + lamb(i) * cy1(n,i)
+    END DO
+    t = nod(n,g)%jo(3) - nod(n,g)%ji(3) + nod(n,g)%ji(4) - nod(n,g)%jo(4)
+    a = 2. * (nod(n,g)%jo(3) + nod(n,g)%ji(3) &
+      - nod(n,g)%ji(4) - nod(n,g)%jo(4))
+    fty1(n,g) = -0.5 / ydel(iy(n)) * t - D(n,g) / ydel(iy(n))**2 * a &
+              - sigrx(n,g) * fy1(n,g) &
+              + scat + chi(mat(n),g) * ((1.-tbeta) * fsy1(n) + dela) &
+              + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
+              * fy1(n,g) - Lm(2)
+
+    ! z1 moment
+    scat = 0.
+    DO h = 1, ng
+       IF (g /= h) scat = scat + sigs(n,h,g) * fz1(n,h)
+    END DO
+    dela = 0.
+    DO i = 1, nf
+       dela = dela + lamb(i) * cz1(n,i)
+    END DO
+    t = nod(n,g)%jo(5) - nod(n,g)%ji(5) + nod(n,g)%ji(6) - nod(n,g)%jo(6)
+    a = 2. * (nod(n,g)%jo(5) + nod(n,g)%ji(5) &
+      - nod(n,g)%ji(6) - nod(n,g)%jo(6))
+    ftz1(n,g) = -0.5 / zdel(iz(n)) * t - D(n,g) / zdel(iz(n))**2 * a &
+              - sigrx(n,g) * fz1(n,g) &
+              + scat + chi(mat(n),g) * ((1.-tbeta) * fsz1(n) + dela) &
+              + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
+              * fz1(n,g) - Lm(3)
+
+    ! x2 moment
+    scat = 0.
+    DO h = 1, ng
+       IF (g /= h) scat = scat + sigs(n,h,g) * fx2(n,h)
+    END DO
+    dela = 0.
+    DO i = 1, nf
+       dela = dela + lamb(i) * cx2(n,i)
+    END DO
+    a = 2. * (nod(n,g)%jo(1) + nod(n,g)%ji(1) &
+      + nod(n,g)%ji(2) + nod(n,g)%jo(2) - f0(n,g))
+    ftx2(n,g) = -0.5 / xdel(ix(n)) * nod(n,g)%L(1) &
+              - 3. * D(n,g) / xdel(ix(n))**2 * a &
+              - sigrx(n,g) * fx2(n,g) &
+              + scat + chi(mat(n),g) * ((1.-tbeta) * fsx2(n) + dela) &
+              + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
+              * fx2(n,g) - Lm(4)
+
+   ! y2 moment
+   scat = 0.
+   DO h = 1, ng
+      IF (g /= h) scat = scat + sigs(n,h,g) * fy2(n,h)
+   END DO
+   dela = 0.
+   DO i = 1, nf
+      dela = dela + lamb(i) * cy2(n,i)
+   END DO
+   a = 2. * (nod(n,g)%jo(3) + nod(n,g)%ji(3) &
+     + nod(n,g)%ji(4) + nod(n,g)%jo(4) - f0(n,g))
+   fty2(n,g) = -0.5 / ydel(iy(n)) * nod(n,g)%L(2) &
+             - 3. * D(n,g) / ydel(iy(n))**2 * a &
+             - sigrx(n,g) * fy2(n,g) &
+             + scat + chi(mat(n),g) * ((1.-tbeta) * fsy2(n) + dela) &
+             + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
+             * fy2(n,g) - Lm(5)
+
+  ! z2 moment
+  scat = 0.
+  DO h = 1, ng
+     IF (g /= h) scat = scat + sigs(n,h,g) * fz2(n,h)
+  END DO
+  dela = 0.
+  DO i = 1, nf
+     dela = dela + lamb(i) * cz2(n,i)
+  END DO
+  a = 2. * (nod(n,g)%jo(5) + nod(n,g)%ji(5) &
+    + nod(n,g)%ji(6) + nod(n,g)%jo(6) - f0(n,g))
+  ftz2(n,g) = -0.5 / zdel(iz(n)) * nod(n,g)%L(3) &
+            - 3. * D(n,g) / zdel(iz(n))**2 * a &
+            - sigrx(n,g) * fz2(n,g) &
+            + scat + chi(mat(n),g) * ((1.-tbeta) * fsz2(n) + dela) &
+            + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
+            * fz2(n,g) - Lm(6)
+
+  END DO
+END DO
+
+
+END SUBROUTINE SavePre
 
 
 END MODULE trans

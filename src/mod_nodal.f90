@@ -1366,7 +1366,7 @@ SUBROUTINE TSrcT(g, sf0, sfx1, sfy1, sfz1, sfx2, sfy2, sfz2, &
 !   To update total source for transient calcs. with exponetial transformation
 !
 
-USE sdata, ONLY: nod, chi, mat, nnod, tbeta, velo, lamb, iBeta, nf, omeg, &
+USE sdata, ONLY: nod, chi, mat, nnod, tbeta, lamb, iBeta, nf, omeg, bthet, &
                  c0, cx1, cy1, cz1, cx2, cy2, cz2, &
                  ft, ftx1, fty1, ftz1, ftx2, fty2, ftz2
 
@@ -1396,19 +1396,19 @@ DO n = 1, nnod
     END DO
 
     nod(n,g)%Q(1) = ((1. - tbeta) * chi(mat(n),g) + dfis) * sf0(n)  &
-    + s0(n) + chi(mat(n),g) * dt + ft(n,g)  * EXP(omeg(n,g) * h) / (velo(g) * h)
+    + s0(n) + chi(mat(n),g) * dt + ft(n,g)  * EXP(omeg(n,g) * h) * bthet
     nod(n,g)%Q(2) = ((1. - tbeta) * chi(mat(n),g) + dfis) * sfx1(n)  &
-    + sx1(n) + chi(mat(n),g) * dtx1 + ftx1(n,g)  * EXP(omeg(n,g) * h) / (velo(g) * h)
+    + sx1(n) + chi(mat(n),g) * dtx1 + ftx1(n,g)  * EXP(omeg(n,g) * h) * bthet
     nod(n,g)%Q(3) = ((1. - tbeta) * chi(mat(n),g) + dfis) * sfy1(n)  &
-    + sy1(n) + chi(mat(n),g) * dty1 + fty1(n,g)  * EXP(omeg(n,g) * h) / (velo(g) * h)
+    + sy1(n) + chi(mat(n),g) * dty1 + fty1(n,g)  * EXP(omeg(n,g) * h) * bthet
     nod(n,g)%Q(4) = ((1. - tbeta) * chi(mat(n),g) + dfis) * sfz1(n)  &
-    + sz1(n) + chi(mat(n),g) * dtz1 + ftz1(n,g)  * EXP(omeg(n,g) * h) / (velo(g) * h)
+    + sz1(n) + chi(mat(n),g) * dtz1 + ftz1(n,g)  * EXP(omeg(n,g) * h) * bthet
     nod(n,g)%Q(5) = ((1. - tbeta) * chi(mat(n),g) + dfis) * sfx2(n)  &
-    + sx2(n) + chi(mat(n),g) * dtx2 + ftx2(n,g)  * EXP(omeg(n,g) * h) / (velo(g) * h)
+    + sx2(n) + chi(mat(n),g) * dtx2 + ftx2(n,g)  * EXP(omeg(n,g) * h) * bthet
     nod(n,g)%Q(6) = ((1. - tbeta) * chi(mat(n),g) + dfis) * sfy2(n)  &
-    + sy2(n) + chi(mat(n),g) * dty2 + fty2(n,g)  * EXP(omeg(n,g) * h) / (velo(g) * h)
+    + sy2(n) + chi(mat(n),g) * dty2 + fty2(n,g)  * EXP(omeg(n,g) * h) * bthet
     nod(n,g)%Q(7) = ((1. - tbeta) * chi(mat(n),g) + dfis) * sfz2(n)  &
-    + sz2(n) + chi(mat(n),g) * dtz2 + ftz2(n,g)  * EXP(omeg(n,g) * h) / (velo(g) * h)
+    + sz2(n) + chi(mat(n),g) * dtz2 + ftz2(n,g)  * EXP(omeg(n,g) * h) * bthet
 END DO
 
 END SUBROUTINE TSrcT

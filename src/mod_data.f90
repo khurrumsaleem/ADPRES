@@ -128,7 +128,7 @@ REAL :: tstep2                                     ! SECOND TIME STEP
 REAL :: tdiv                                       ! WHEN SECOND TIME STEP APPLY
 REAL, DIMENSION(:,:), ALLOCATABLE :: omeg          ! Exponential transformation constant
 LOGICAL :: tranw = .FALSE.                         ! To activate unconverged  outer iteration warning
-REAL :: thet, bthet                                ! theta and big theta (0. < theta <= 1.0)
+REAL :: thet = 0.5, bthet                                ! theta and big theta (0. < theta <= 1.0)
 
 ! Thermal-hydraulics parameters
 REAL :: pow                                        ! Reactor power for given geometry (watt)
