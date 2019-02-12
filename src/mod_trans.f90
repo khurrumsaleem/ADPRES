@@ -242,7 +242,8 @@ DO i = 1, imax
     sigrp = sigr    ! Save sigr to sigrp
     DO g = 1, ng
        DO n = 1, nnod
-          sigr(n,g) = sigr(n,g) + 1. / (velo(g) * tstep2) + omeg(n,g) / velo(g)
+          sigr(n,g) = sigr(n,g) + 1. / (velo(g) * tstep2 * thet) &
+                    + omeg(n,g) / velo(g)
        END DO
     END DO
 
@@ -547,7 +548,8 @@ DO i = 1, imax
     sigrp = sigr    ! Save sigr to sigrp
     DO g = 1, ng
        DO n = 1, nnod
-          sigr(n,g) = sigr(n,g) + 1. / (velo(g) * tstep2) + omeg(n,g) / velo(g)
+          sigr(n,g) = sigr(n,g) + 1. / (velo(g) * tstep2 * thet) &
+                    + omeg(n,g) / velo(g)
        END DO
     END DO
 
