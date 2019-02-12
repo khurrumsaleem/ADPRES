@@ -35,6 +35,7 @@ IMPLICIT NONE
 
 REAL, DIMENSION(nnod, ng) :: af                                      ! adjoint flux
 REAL, DIMENSION(nnod, ng) :: sigrp                                   ! Temporary sigr
+REAL, DIMENSION(nnod, ng) :: fm                                      ! Previous time zeroth flux
 
 REAL :: rho
 REAL :: t1, t2
@@ -129,7 +130,7 @@ DO i = 1, imax
     t2 = REAL(i)*tstep1
 
     IF (i > 1) THEN
-       omeg = LOG(f0 / ft) / tstep1
+       omeg = LOG(f0 / fm) / tstep1
     ELSE
        omeg = 0.
     END IF
@@ -164,6 +165,9 @@ DO i = 1, imax
                     + omeg(n,g) / velo(g)
        END DO
     END DO
+
+    ! Save previous zeroth flux moment
+    fm = f0
 
     ! Transient calculation
     CALL nodal_coup4()
@@ -208,7 +212,11 @@ DO i = 1, imax
     t1 = t2
     t2 = tdiv + REAL(i)*tstep2
 
-    omeg = LOG(f0 / ft) / tstep2
+    ! Calculate omega
+    omeg = LOG(f0 / fm) / tstep2
+
+    ! Save previous parameters
+    CALL SavePre(tstep2, sigrp, ft, ftx1, fty1, ftz1, ftx2, fty2, ftz2)
 
     ! Rod bank changes
     DO n = 1, nb
@@ -238,10 +246,8 @@ DO i = 1, imax
        END DO
     END DO
 
-    ! Save the previous flux and DN precusor density
-    ft = f0
-    ftx1 = fx1; fty1 = fy1; ftz1 = fz1
-    ftx2 = fx2; fty2 = fy2; ftz2 = fz2
+    ! Save previous zeroth flux moment
+    fm = f0
 
     ! Transient calculation
     CALL nodal_coup4()
@@ -392,48 +398,49 @@ imax = NINT(tdiv/tstep1)
 ! First Time Step
 DO i = 1, imax
 
-  step = step + 1
-  t1 = t2
-  t2 = REAL(i)*tstep1
+   step = step + 1
+   t1 = t2
+   t2 = REAL(i)*tstep1
 
-  IF (i > 1) THEN
-     omeg = LOG(f0 / ft) / tstep1
-  ELSE
-     omeg = 0.
-  END IF
+   IF (i > 1) THEN
+      omeg = LOG(f0 / fm) / tstep1
+   ELSE
+      omeg = 0.
+   END IF
 
-  ! Rod bank changes
-  DO n = 1, nb
-      IF (mdir(n) == 1) THEN   ! If CR moving down
-          IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) < 1.e-5) THEN
-              bpos(n) = bpos(n) - tstep1 *  bspeed(n)
-              IF (bpos(n) < fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
-          END IF
-      ELSE IF (mdir(n) == 2) THEN ! If CR moving up
-          IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) > 1.e-5) THEN
-              bpos(n) = bpos(n) + tstep1 *  bspeed(n)
-              IF (bpos(n) > fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
-          END IF
-      ELSE
-          CONTINUE
-      END IF
-   END DO
+   CALL SavePre(tstep1, sigrp, ft, ftx1, fty1, ftz1, ftx2, fty2, ftz2)
 
-  ! Calculate xsec after pertubation
-   CALL XS_updt(bcon, ftem, mtem, cden, bpos)
+   ! Rod bank changes
+   DO n = 1, nb
+        IF (mdir(n) == 1) THEN   ! If CR moving down
+            IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) < 1.e-5) THEN
+                bpos(n) = bpos(n) - tstep1 *  bspeed(n)
+                IF (bpos(n) < fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
+            END IF
+        ELSE IF (mdir(n) == 2) THEN ! If CR moving up
+            IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) > 1.e-5) THEN
+                bpos(n) = bpos(n) + tstep1 *  bspeed(n)
+                IF (bpos(n) > fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
+            END IF
+        ELSE
+            CONTINUE
+        END IF
+     END DO
 
-  ! Modify removal xsec
-  sigrp = sigr    ! Save sigr to sigrp
+    ! Calculate xsec after pertubation
+    CALL XS_updt(bcon, ftem, mtem, cden, bpos)
+
+    ! Modify removal xsec
+    sigrp = sigr    ! Save sigr to sigrp
     DO g = 1, ng
        DO n = 1, nnod
-          sigr(n,g) = sigr(n,g) + 1. / (velo(g) * tstep1) + omeg(n,g) / velo(g)
+          sigr(n,g) = sigr(n,g) + 1. / (velo(g) * tstep1 * thet) &
+                    + omeg(n,g) / velo(g)
        END DO
     END DO
 
-    ! Save the previous flux and DN precusor density
-    ft = f0
-    ftx1 = fx1; fty1 = fy1; ftz1 = fz1
-    ftx2 = fx2; fty2 = fy2; ftz2 = fz2
+    ! Save previous zeroth flux moment
+    fm = f0
 
     ! Transient calculation
     CALL nodal_coup4()
@@ -897,7 +904,7 @@ DO g = 1, ng
               - sigrx(n,g) * fx1(n,g) &
               + scat + chi(mat(n),g) * ((1.-tbeta) * fsx1(n) + dela) &
               + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
-              * fx1(n,g) - Lm(1)
+              * fx1(n,g) - Lm(2)
 
     ! y1 moment
     scat = 0.
@@ -915,7 +922,7 @@ DO g = 1, ng
               - sigrx(n,g) * fy1(n,g) &
               + scat + chi(mat(n),g) * ((1.-tbeta) * fsy1(n) + dela) &
               + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
-              * fy1(n,g) - Lm(2)
+              * fy1(n,g) - Lm(3)
 
     ! z1 moment
     scat = 0.
@@ -933,7 +940,7 @@ DO g = 1, ng
               - sigrx(n,g) * fz1(n,g) &
               + scat + chi(mat(n),g) * ((1.-tbeta) * fsz1(n) + dela) &
               + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
-              * fz1(n,g) - Lm(3)
+              * fz1(n,g) - Lm(4)
 
     ! x2 moment
     scat = 0.
@@ -951,7 +958,7 @@ DO g = 1, ng
               - sigrx(n,g) * fx2(n,g) &
               + scat + chi(mat(n),g) * ((1.-tbeta) * fsx2(n) + dela) &
               + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
-              * fx2(n,g) - Lm(4)
+              * fx2(n,g) - Lm(5)
 
    ! y2 moment
    scat = 0.
@@ -969,7 +976,7 @@ DO g = 1, ng
              - sigrx(n,g) * fy2(n,g) &
              + scat + chi(mat(n),g) * ((1.-tbeta) * fsy2(n) + dela) &
              + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
-             * fy2(n,g) - Lm(5)
+             * fy2(n,g) - Lm(6)
 
   ! z2 moment
   scat = 0.
@@ -987,7 +994,7 @@ DO g = 1, ng
             - sigrx(n,g) * fz2(n,g) &
             + scat + chi(mat(n),g) * ((1.-tbeta) * fsz2(n) + dela) &
             + (1. / (velo(g) * tdel * thet * bthet) - omeg(n,g) / velo(g)) &
-            * fz2(n,g) - Lm(6)
+            * fz2(n,g) - Lm(7)
 
   END DO
 END DO
