@@ -301,7 +301,7 @@ USE sdata, ONLY: ng, nnod, sigr, nf, &
                  fs0, fsx1, fsy1, fsz1, fsx2, fsy2, fsz2, &
                  c0, cx1, cy1, cz1, cx2, cy2, cz2, tbeta, omeg, &
                  npow, pow, ppow, node_nf, ix, iy, iz, zdel, tranw, &
-                 ft, ftx1, fty1, ftz1, ftx2, fty2, ftz2
+                 ft, ftx1, fty1, ftz1, ftx2, fty2, ftz2, thet, bthet
 USE InpOutp, ONLY: XS_updt, ounit
 USE nodal, ONLY: nodal_coup4, outer4, outertf, outer4ad, PowTot, powdis, Fsrc
 USE th, ONLY: th_iter, th_trans, par_ave, par_max, par_ave_f
@@ -310,6 +310,7 @@ IMPLICIT NONE
 
 REAL, DIMENSION(nnod, ng) :: af                                      ! adjoint flux
 REAL, DIMENSION(nnod, ng) :: sigrp                                   ! Temporary sigr
+REAL, DIMENSION(nnod, ng) :: fm                                      ! Previous time zeroth flux
 
 REAL :: rho
 REAL :: t1, t2
@@ -366,6 +367,12 @@ END DO
 
 ! Calculate reactivity
 CALL react(af, sigr, rho)
+
+! Save sigr to sigrp
+sigrp = sigr
+
+!Define bthet
+bthet = (1. - thet) / thet
 
 CALL par_ave_f(ftem, tf)
 CALL par_max(tfm(:,1), mtf)
@@ -506,33 +513,37 @@ imax = NINT((ttot-tdiv)/tstep2)
 
 DO i = 1, imax
 
-  step = step + 1
-  t1 = t2
-  t2 = tdiv + REAL(i)*tstep2
+    step = step + 1
+    t1 = t2
+    t2 = tdiv + REAL(i)*tstep2
 
-  omeg = LOG(f0 / ft) / tstep2
+    ! Calculate omega
+    omeg = LOG(f0 / fm) / tstep2
 
-  ! Rod bank changes
-  DO n = 1, nb
-      IF (mdir(n) == 1) THEN   ! If CR moving down
-          IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) < 1.e-5) THEN
-              bpos(n) = bpos(n) - tstep2 *  bspeed(n)
-              IF (bpos(n) < fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
-          END IF
-      ELSE IF (mdir(n) == 2) THEN ! If CR moving up
-          IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) > 1.e-5) THEN
-              bpos(n) = bpos(n) + tstep2 *  bspeed(n)
-              IF (bpos(n) > fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
-          END IF
-      ELSE
-          CONTINUE
-      END IF
-   END DO
+    ! Save previous parameters
+    CALL SavePre(tstep2, sigrp, ft, ftx1, fty1, ftz1, ftx2, fty2, ftz2)
 
-  ! Calculate xsec after pertubation
-   CALL XS_updt(bcon, ftem, mtem, cden, bpos)
+    ! Rod bank changes
+    DO n = 1, nb
+        IF (mdir(n) == 1) THEN   ! If CR moving down
+            IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) < 1.e-5) THEN
+                bpos(n) = bpos(n) - tstep2 *  bspeed(n)
+                IF (bpos(n) < fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
+            END IF
+        ELSE IF (mdir(n) == 2) THEN ! If CR moving up
+            IF (t2-tmove(n) > 1.e-5 .AND. fbpos(n)-bpos(n) > 1.e-5) THEN
+                bpos(n) = bpos(n) + tstep2 *  bspeed(n)
+                IF (bpos(n) > fbpos(n)) bpos(n) = fbpos(n)  ! If bpos exceed, set to fbpos
+            END IF
+        ELSE
+            CONTINUE
+        END IF
+     END DO
 
-  ! Modify removal xsec
+    ! Calculate xsec after pertubation
+    CALL XS_updt(bcon, ftem, mtem, cden, bpos)
+
+    ! Modify removal xsec
     sigrp = sigr    ! Save sigr to sigrp
     DO g = 1, ng
        DO n = 1, nnod
@@ -540,10 +551,8 @@ DO i = 1, imax
        END DO
     END DO
 
-    ! Save the previous flux and DN precusor density
-    ft = f0
-    ftx1 = fx1; fty1 = fy1; ftz1 = fz1
-    ftx2 = fx2; fty2 = fy2; ftz2 = fz2
+    ! Save previous zeroth flux moment
+    fm = f0
 
     ! Transient calculation
     CALL nodal_coup4()
