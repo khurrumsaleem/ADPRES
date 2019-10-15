@@ -72,7 +72,7 @@ USE sdata, ONLY: ng, nnod, mode, al
 IMPLICIT NONE
 
 INTEGER :: iost, g, i, N
-CHARACTER(LEN=20) :: iname, oname
+CHARACTER(LEN=150) :: iname, oname
 
 !Got this trick from: http://web.utah.edu/thorne/computing/Handy_Fortran_Tricks.pdf
 N = IARGC()
@@ -327,6 +327,13 @@ WRITE(ounit,*) &
 1008 FORMAT (45X, 'START READING INPUT')
 1021 FORMAT(2X, 'CARD ', A, ' DOES NOT PRESENT. THIS CARD IS MANDATORY')
 1041 FORMAT(2X, 'CARD ', A, ' DOES NOT PRESENT. THIS CARD IS MANDATORY FOR ', A,' CALCULATION MODE')
+
+CLOSE(UNIT=umode); CLOSE(UNIT=uxsec); CLOSE(UNIT=ugeom)
+CLOSE(UNIT=ucase); CLOSE(UNIT=uesrc); CLOSE(UNIT=uwrst)
+CLOSE(UNIT=urrst); CLOSE(UNIT=uiter); CLOSE(UNIT=uprnt)
+CLOSE(UNIT=uadf);  CLOSE(UNIT=ucrod); CLOSE(UNIT=ubcon)
+CLOSE(UNIT=uftem); CLOSE(UNIT=umtem); CLOSE(UNIT=ucden)
+CLOSE(UNIT=ucbcs); CLOSE(UNIT=uejct); CLOSE(UNIT=uther)
 
 END SUBROUTINE inp_read
 
